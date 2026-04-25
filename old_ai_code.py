@@ -2,12 +2,41 @@ import os
 import asyncio
 import socket
 from puter import ChatCompletion
+from typing import overload
+
+class NodeWithParentsAlreadyExistsException(Exception):
+    ...
 
 class Node:
+    current_node_parents: list[tuple[str, str]] = []
+    
     def __init__(self, name, sdescription = None, ldescription = None):
         self.name = name
+        
+        if sdescription is None:
+            sdescription = get_short_ai_description(name)
         self.shortDescription = sdescription
+        
         self.longDescription = ldescription
+    
+    @staticmethod
+    def make_node_from_parents(parent1: Node | str, parent2: Node | str):
+        if parent1 is Node:
+            parent1: str = parent1.getName()
+        if parent2 is Node:
+            parent2: str = parent2.getName()
+        
+        if (parent1, parent2) in Node.current_node_parents or \
+            (parent2, parent1) in Node.current_node_parents:
+            raise NodeWithParentsAlreadyExistsException(f"{parent1} and {parent2}")
+        
+        Node.add_parents_to_list(parent1, parent2)
+
+        return Node(get_new_node_name(parent1, parent2))
+    
+    @staticmethod
+    def add_parents_to_list(parent1: str, parent2: str) -> None:
+        Node.current_node_parents.append((parent1, parent2))
     
     def getName(self):
         return self.name
@@ -75,7 +104,7 @@ def initialize_puter_client():
         return None
 
 def get_new_node_name(idea1: str, idea2: str) -> str:
-    prompt = f"can you generate a new idea based off of {idea1} and {idea2} that will encourage the user to explore new ideas? make sure you return a simple sentence formatted in the same phrasing as the ideas. don't be too specific and limit yourself to 15 words."
+    prompt = f"can you generate a new idea based off of {idea1} and {idea2} that will encourage the user to explore new ideas? make sure you return a short & simple sentence formatted in the same phrasing as the ideas. don't be too specific and limit yourself to 15 words."
     name: str = prompt_puter_ai(prompt)
     if name is None or (not name["success"]):
         return f"error: uhh something went wrong. gulp."
@@ -111,9 +140,19 @@ def get_new_ai_idea_node(idea1: str, idea2: str) -> str:
         # return error message if api call fails
         return f"error fetching description: {str(e)}"
 
-newNode = get_new_ai_idea_node("learning physics", "making a game in godot")
+newNode = Node.make_node_from_parents("learning physics", "making a game in godot")
 
 print(newNode.getName())
 print(newNode.getShortDescription())
 print("\n\n\n")
 print(newNode.getLongDescription())
+print(Node.current_node_parents)
+
+try:
+    newNode = Node.make_node_from_parents("learning physics", "making a game in godot")
+    print(newNode)
+    print(Node.current_node_parents)
+except NodeWithParentsAlreadyExistsException:
+    print("this should run. good. good. good.")
+
+print(Node.current_node_parents)
