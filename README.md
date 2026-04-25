@@ -12,6 +12,9 @@ Deck-of-cards like random topic/thing chooser
 Gamified micro-learning
 * 5-10 minute games that people can play to learn
 
-Infinite craft inspired topic masher
+Infinite craft inspired topic masher (chosen !!)
 * drag topics together to see if they create a new topic.
 * ai comes up with the new topic (wow)
+
+## setup:
+https://ai.google.dev/gemini-api/docs/quickstart
