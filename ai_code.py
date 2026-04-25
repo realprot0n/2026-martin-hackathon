@@ -21,9 +21,9 @@ class Node:
     
     @staticmethod
     def make_node_from_parents(parent1: str | object , parent2: str | object):
-        if parent1 is Node:
+        if isinstance(parent1, Node):
             parent1: str = parent1.getName()
-        if parent2 is Node:
+        if isinstance(parent2, Node):
             parent2: str = parent2.getName()
         
         if (parent1, parent2) in Node.current_node_parents or \

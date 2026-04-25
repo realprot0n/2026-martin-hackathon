@@ -26,13 +26,15 @@ class DraggableTextNode(QGraphicsTextItem):
 
     def paint(self, painter, option, widget):
         rect = self.boundingRect()
-        
-        color_scheme: Qt.ColorScheme = QGuiApplication.styleHints().colorScheme()
+        color_scheme = QGuiApplication.styleHints().colorScheme()
 
         if color_scheme == Qt.ColorScheme.Dark:
             bg_color = QColor("#4e0000") if self.is_over_trash else QColor("#333333")
+            self.setDefaultTextColor(Qt.white) # Set text to white for dark mode
         else:
             bg_color = QColor("#ffcccc") if self.is_over_trash else QColor("white")
+            self.setDefaultTextColor(Qt.black) # Set text to black for light mode
+            
         border_color = QColor("#ff4444") if self.is_over_trash else QColor("#bdc3c7")
         
         painter.setBrush(QBrush(bg_color))
@@ -40,8 +42,6 @@ class DraggableTextNode(QGraphicsTextItem):
         painter.drawRoundedRect(rect, 5, 5)
         
         super().paint(painter, option, widget)
-
-
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
@@ -55,6 +55,14 @@ class DraggableTextNode(QGraphicsTextItem):
     def mouseReleaseEvent(self, event):
         if self.main_window.check_collision_with_trash(self):
             self.scene().removeItem(self)
+            return super().mouseReleaseEvent(event)
+
+        colliding_items = self.scene().items(self.sceneBoundingRect())
+        for item in colliding_items:
+            if isinstance(item, DraggableTextNode) and item is not self:
+                self.main_window.merge_nodes(self, item)
+                break 
+
         super().mouseReleaseEvent(event)
 
 class InfiniteCanvas(QGraphicsView):
@@ -122,9 +130,11 @@ class MainWindow(QMainWindow):
         super().resizeEvent(event)
 
     def check_collision_with_trash(self, node):
-        node_rect_in_view = self.view.mapFromScene(node.sceneBoundingRect()).boundingRect()
+        bottom_center = node.sceneBoundingRect().bottomLeft() + \
+                        (node.sceneBoundingRect().bottomRight() - node.sceneBoundingRect().bottomLeft()) / 2
         
-        return node_rect_in_view.bottom() > (self.view.height() - 80)
+        view_point = self.view.mapFromScene(bottom_center)
+        return view_point.y() > (self.view.height() - 80)
 
     def add_node(self):
         text = self.text_entry.text().strip()
@@ -135,6 +145,23 @@ class MainWindow(QMainWindow):
             self.text_entry.clear()
             center = self.view.mapToScene(self.view.viewport().rect().center())
             node.setPos(center)
+    
+    def merge_nodes(self, node1, node2):
+        try:
+            new_data_obj = ai_code.Node.make_node_from_parents(node1.data.name, node2.data.name)
+            
+            new_node = DraggableTextNode(new_data_obj, self)
+            self.scene.addItem(new_node)
+            new_node.setPos(node2.pos())
+            
+            self.scene.removeItem(node1)
+            self.scene.removeItem(node2)
+            
+        except ai_code.NodeWithParentsAlreadyExistsException:
+            print("These have already been combined!")
+        except Exception as e:
+            print(f"Merge error: {e}")
+
 
 
 if __name__ == "__main__":
