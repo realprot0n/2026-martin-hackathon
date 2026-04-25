@@ -9,20 +9,21 @@ import ai_code
 
 class DraggableTextNode(QGraphicsTextItem):
     def __init__(self, Node, main_window):
-        super().__init__(Node.name) 
-
+        super().__init__()
         self.data = Node
         self.main_window = main_window
-        
+        self.is_over_trash = False
+
         font = self.font()
         font.setPointSize(12)
         font.setBold(True)
         self.setFont(font)
-        
-        self.is_over_trash = False
 
+        self.update_display_text(show_description=False)
+        
         self.setFlag(QGraphicsTextItem.ItemIsMovable)
         self.setFlag(QGraphicsTextItem.ItemIsSelectable)
+        self.setAcceptHoverEvents(True)
 
     def paint(self, painter, option, widget):
         rect = self.boundingRect()
@@ -64,6 +65,32 @@ class DraggableTextNode(QGraphicsTextItem):
                 break 
 
         super().mouseReleaseEvent(event)
+    
+    def update_display_text(self, show_description=False):
+        color_scheme = QGuiApplication.styleHints().colorScheme()
+        is_dark = (color_scheme == Qt.ColorScheme.Dark)
+        
+        name_color = "white" if is_dark else "black"
+        desc_color = "#aaaaaa" if is_dark else "#555555"
+        
+        html = f"<div style='text-align: center;'>"
+        html += f"<b style='color: {name_color}; font-size: 14px;'>{self.data.name}</b>"
+        
+        if show_description:
+            html += f"<br><span style='color: {desc_color}; font-size: 10px;'>{self.data.shortDescription}</span>"
+        
+        html += "</div>"
+        self.setHtml(html)
+
+    def hoverEnterEvent(self, event):
+        self.prepareGeometryChange()
+        self.update_display_text(show_description=True)
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self.prepareGeometryChange()
+        self.update_display_text(show_description=False)
+        super().hoverLeaveEvent(event)
 
 class InfiniteCanvas(QGraphicsView):
     def __init__(self, scene):
