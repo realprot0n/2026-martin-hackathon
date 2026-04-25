@@ -1,18 +1,13 @@
 import os
 import asyncio
 import socket
-from puter import PuterAI
+from puter import ChatCompletion
 
 class Node:
-    def __init__(self, name, sdescription, ldescription):
+    def __init__(self, name, sdescription = None, ldescription = None):
         self.name = name
         self.shortDescription = sdescription
         self.longDescription = ldescription
-    
-    def __init__(self, name):
-        self.name = name
-        self.shortDescription = None
-        self.longDescription = None
     
     def getName(self):
         return self.name
@@ -39,8 +34,21 @@ def is_connected(timeout: float = 1.0) -> bool:
     except OSError:
         return False
 
+def prompt_puter_ai(prompt: str, api_key: str = None) -> dict[str, bool | str | list | dict[str | bool | dict]]:
+    if api_key == None:
+        api_key = os.environ["PUTER_API_KEY"]
+    
+    response = ChatCompletion.create(
+        messages=[{"role": "user", "content": prompt}],
+        model="gpt-4o-mini",
+        driver="openai-completion",
+        api_key=api_key
+    )
+    return response
+
 def initialize_puter_client():
     """
+    DEPRECATED, USE `prompt_puter_ai` INSTEAD \n
     initialize the puter ai client using environment variables.
     returns the client if successful, none otherwise.
     """
@@ -50,42 +58,45 @@ def initialize_puter_client():
         return puter_client
     
     try:
-        username = os.environ["PUTER_USERNAME"]
-        password = os.environ["PUTER_PASSWORD"]
-        puter_client = PuterAI(username=username, password=password)
-        if puter_client.login():
-            return puter_client
+        api_key = os.environ["PUTER_API_KEY"]
+        response = ChatCompletion.create(
+            messages=[{"role": "user", "content": "how many usages do i have left"}],
+            model="gpt-4o-mini",
+            driver="openai-completion",
+            api_key=api_key # put api key from puter.com here please
+        )
+        print(response)
+
+        if response["success"]:
+            return response['result']['message']['content']
         return None
     except Exception as e:
         print(e)
         return None
 
 def get_new_node_name(idea1: str, idea2: str) -> str:
-    client = initialize_puter_client()
-    if client is None:
-        return "error: puter.js credentials not set. set PUTER_USERNAME and PUTER_PASSWORD environment variables."
-    
     prompt = f"can you generate a new idea based off of {idea1} and {idea2} that will encourage the user to explore new ideas? make sure you return a simple sentence formatted in the same phrasing as the ideas. don't be too specific and limit yourself to 15 words."
-    name = client.chat(prompt)
-    return name
+    name: str = prompt_puter_ai(prompt)
+    if name is None or (not name["success"]):
+        return f"error: uhh something went wrong. gulp."
+    
+    return name['result']['message']['content']
 
 def get_short_ai_description(name: str) -> str:
-    client = initialize_puter_client()
-    if client is None:
-        return "error: puter.js credentials not set. set PUTER_USERNAME and PUTER_PASSWORD environment variables."
-    
     prompt = f"can you generate a short description over {name}, make it 2-3 sentences long."
-    short_description = client.chat(prompt)
-    return short_description
+    short_description = prompt_puter_ai(prompt)
+    if short_description is None or (not short_description["success"]):
+        return f"error: uhh something went wrong. gulp."
+    
+    return short_description['result']['message']['content']
 
 def get_long_ai_description(name: str) -> Node:
-    client = initialize_puter_client()
-    if client is None:
-        return "error: puter.js credentials not set. set PUTER_USERNAME and PUTER_PASSWORD environment variables."
-    
     prompt = f"can you generate a description for {name} that goes into detail. feel free to make it lengthy and as detailed as possible."
-    long_description = client.chat(prompt)
-    return long_description
+    long_description = prompt_puter_ai(prompt)
+    if long_description is None or (not long_description["success"]):
+        return f"error: uhh something went wrong. gulp."
+
+    return long_description['result']['message']['content']
 
 def get_new_ai_idea_node(idea1: str, idea2: str) -> str:
     """

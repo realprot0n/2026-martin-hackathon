@@ -17,7 +17,9 @@ Infinite craft inspired topic masher (chosen !!)
 * ai comes up with the new topic (wow)
 
 ## setup:
-1. create account at https://puter.com
-2. get username/password/api key from https://puter.com/dashboard#account
-3. set PUTER_USERNAME and PUTER_PASSWORD environment variables to your puter username and password (you likely have to restart VS code or whatever you're using)
-4. uhh it should work
+1. clone repository to your local system
+2. run `pip install puter` (or `py -m pip install puter`)
+3. use pip to install other modules if they aren't installed yet
+3. create account at https://puter.com
+4. get api key from https://puter.com/dashboard#account
+5. set PUTER_API_KEY environment variable to your puter api key (you likely have to restart VS code or whatever you're using)
