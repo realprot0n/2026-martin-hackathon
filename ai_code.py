@@ -118,7 +118,7 @@ def initialize_puter_client():
         return None
 
 def get_new_node_name(idea1: str, idea2: str) -> str:
-    prompt = f"can you generate a new idea based off of {idea1} and {idea2} that will encourage the user to explore new ideas? make sure you return a short & simple sentence formatted in the same phrasing as the ideas. don't be too specific and limit yourself to 15 words."
+    prompt = f"can you generate a new idea based off of {idea1} and {idea2} that will encourage the user to explore new ideas? make sure you return a short & simple sentence formatted in the same phrasing as the ideas. don't be too specific and limit yourself to 15 words. don't use words like \"create a\" or \"develop a\" or anything similar that prompts the user."
     name: str = prompt_puter_ai(prompt)
     if name is None or (not name["success"]):
         return f"error: uhh something went wrong. gulp."
