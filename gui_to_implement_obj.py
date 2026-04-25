@@ -43,7 +43,6 @@ class DraggableTextNode(QGraphicsTextItem):
         painter.drawRoundedRect(rect, 5, 5)
         
         super().paint(painter, option, widget)
-
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
         
@@ -166,7 +165,7 @@ class MainWindow(QMainWindow):
     def add_node(self):
         text = self.text_entry.text().strip()
         if text:
-            new_item = ai_code.Node(text)
+            new_item = ai_code.Node(text, is_user_created=False)
             node = DraggableTextNode(new_item, self)
             self.scene.addItem(node)
             self.text_entry.clear()

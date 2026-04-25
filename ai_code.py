@@ -10,14 +10,15 @@ class NodeWithParentsAlreadyExistsException(Exception):
 class Node:
     current_node_parents: list[tuple[str, str]] = []
     
-    def __init__(self, name, sdescription = None, ldescription = None):
+    def __init__(self, name, sdescription = None, ldescription = None, is_user_created: bool = False):
         self.name = name
         
-        if sdescription is None:
+        if sdescription is None and is_user_created:
             sdescription = get_short_ai_description(name)
         self.shortDescription = sdescription
         
         self.longDescription = ldescription
+        self.is_user_created = is_user_created
     
     @staticmethod
     def make_node_from_parents(parent1: str | object , parent2: str | object):
@@ -42,10 +43,17 @@ class Node:
         return self.name
     
     def getShortDescription(self):
+        if self.is_user_created:
+            return "You created this node"
         return self.shortDescription
     
-    def getLongDescription(self):
-        return self.longDescription if (self.longDescription != None) else get_long_ai_description(self.name)
+    def getLongDescription(self) -> str | None:
+        if self.longDescription != None:
+            return self.longDescription
+        elif not self.is_user_created:
+            return get_long_ai_description(self.name)
+        
+        return None
     
 puter_client = None
 
@@ -110,7 +118,7 @@ def initialize_puter_client():
         return None
 
 def get_new_node_name(idea1: str, idea2: str) -> str:
-    prompt = f"can you generate a new idea based off of {idea1} and {idea2} that will encourage the user to explore new ideas? make sure you return a short & simple sentence formatted in the same phrasing as the ideas. don't be too specific and limit yourself to 15 words."
+    prompt = f"can you generate a new idea based off of {idea1} and {idea2} that will encourage the user to explore new ideas? make sure you return a short & simple sentence formatted in the same phrasing as the ideas. don't be too specific and limit yourself to 15 words. don't use words like \"create a\" or \"develop a\" or anything similar that prompts the user."
     name: str = prompt_puter_ai(prompt)
     if name is None or (not name["success"]):
         return f"error: uhh something went wrong. gulp."
