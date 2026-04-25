@@ -13,7 +13,7 @@ class Node:
     def __init__(self, name, sdescription = None, ldescription = None, is_user_created: bool = False):
         self.name = name
         
-        if sdescription is None and is_user_created:
+        if (sdescription is None) and (not is_user_created):
             sdescription = get_short_ai_description(name)
         self.shortDescription = sdescription
         

@@ -76,7 +76,7 @@ class DraggableTextNode(QGraphicsTextItem):
         html += f"<b style='color: {name_color}; font-size: 14px;'>{self.data.name}</b>"
         
         if show_description:
-            html += f"<br><span style='color: {desc_color}; font-size: 10px;'>{self.data.shortDescription}</span>"
+            html += f"<br><span style='color: {desc_color}; font-size: 10px;'>{self.data.getShortDescription()}</span>"
         
         html += "</div>"
         self.setHtml(html)
@@ -165,7 +165,7 @@ class MainWindow(QMainWindow):
     def add_node(self):
         text = self.text_entry.text().strip()
         if text:
-            new_item = ai_code.Node(text, is_user_created=False)
+            new_item = ai_code.Node(text, is_user_created=True)
             node = DraggableTextNode(new_item, self)
             self.scene.addItem(node)
             self.text_entry.clear()
