@@ -1,7 +1,8 @@
 import sys
 from PySide6.QtWidgets import (QApplication, QMainWindow, QGraphicsView,
                              QGraphicsScene, QGraphicsTextItem, QLineEdit,
-                             QVBoxLayout, QWidget, QFrame)
+                             QVBoxLayout, QWidget, QFrame, QStackedWidget,
+                             QTextEdit, QPushButton, QLabel)
 from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPainter, QBrush, QColor, QPen, QGuiApplication
 
@@ -19,6 +20,7 @@ class DraggableTextNode(QGraphicsTextItem):
         font.setBold(True)
         self.setFont(font)
 
+        self.setTextWidth(180)
         self.update_display_text(show_description=False)
         
         self.setFlag(QGraphicsTextItem.ItemIsMovable)
@@ -68,13 +70,11 @@ class DraggableTextNode(QGraphicsTextItem):
     def update_display_text(self, show_description=False):
         color_scheme = QGuiApplication.styleHints().colorScheme()
         is_dark = (color_scheme == Qt.ColorScheme.Dark)
-        
         name_color = "white" if is_dark else "black"
         desc_color = "#aaaaaa" if is_dark else "#555555"
         
-        html = f"<div style='text-align: center;'>"
-        html += f"<b style='color: {name_color}; font-size: 14px;'>{self.data.name}</b>"
-        
+        html = f"<div style='text-align: center; width: 100%;'>"
+        html += f"<b style='color: {name_color}; font-size: 13px;'>{self.data.name}</b>"
         if show_description:
             html += f"<br><span style='color: {desc_color}; font-size: 10px;'>{self.data.getShortDescription()}</span>"
         
@@ -90,6 +90,15 @@ class DraggableTextNode(QGraphicsTextItem):
         self.prepareGeometryChange()
         self.update_display_text(show_description=False)
         super().hoverLeaveEvent(event)
+    
+    def mousePressEvent(self, event):
+        self.click_pos = event.scenePos()
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if (event.scenePos() - self.click_pos).manhattanLength() < 5:
+            self.main_window.show_details(self.data)
+        super().mouseReleaseEvent(event)
 
 class InfiniteCanvas(QGraphicsView):
     def __init__(self, scene):
