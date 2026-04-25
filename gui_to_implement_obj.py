@@ -45,6 +45,7 @@ class DraggableTextNode(QGraphicsTextItem):
         painter.drawRoundedRect(rect, 5, 5)
         
         super().paint(painter, option, widget)
+
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
         
@@ -54,7 +55,14 @@ class DraggableTextNode(QGraphicsTextItem):
         if was_over != self.is_over_trash:
             self.update()
 
+    def mousePressEvent(self, event):
+        self.click_pos = event.scenePos()
+        super().mousePressEvent(event)
+
     def mouseReleaseEvent(self, event):
+        if (event.scenePos() - self.click_pos).manhattanLength() < 5:
+            self.main_window.show_details(self.data)
+
         if self.main_window.check_collision_with_trash(self):
             self.scene().removeItem(self)
             return super().mouseReleaseEvent(event)
@@ -90,15 +98,6 @@ class DraggableTextNode(QGraphicsTextItem):
         self.prepareGeometryChange()
         self.update_display_text(show_description=False)
         super().hoverLeaveEvent(event)
-    
-    def mousePressEvent(self, event):
-        self.click_pos = event.scenePos()
-        super().mousePressEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        if (event.scenePos() - self.click_pos).manhattanLength() < 5:
-            self.main_window.show_details(self.data)
-        super().mouseReleaseEvent(event)
 
 class InfiniteCanvas(QGraphicsView):
     def __init__(self, scene):
