@@ -20,7 +20,7 @@ class Node:
         self.longDescription = ldescription
     
     @staticmethod
-    def make_node_from_parents(parent1: Node | str, parent2: Node | str):
+    def make_node_from_parents(parent1: str | object , parent2: str | object):
         if parent1 is Node:
             parent1: str = parent1.getName()
         if parent2 is Node:
@@ -65,7 +65,10 @@ def is_connected(timeout: float = 1.0) -> bool:
 
 def prompt_puter_ai(prompt: str, api_key: str = None) -> dict[str, bool | str | list | dict[str | bool | dict]]:
     if api_key == None:
-        api_key = os.environ["PUTER_API_KEY"]
+        try:
+            api_key = os.environ["PUTER_API_KEY"]
+        except Exception:
+            api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiZ3VpIiwidmVyc2lvbiI6IjAuMC4wIiwidXVpZCI6IjNkNTUyMmZhLTYyNDYtNDg1YS04ZDU3LTRhOWNjMmIwM2E1MCIsInVzZXJfdWlkIjoiMzI2OTU0MzQtYTFhMi00MWZjLWI5YzYtNTljZDQzOGM4YjdhIiwiaWF0IjoxNzc3MTQyMzY1fQ.YzZxABcXWMcFKEi9zXY-M3-a2IAWY0rdgRVxxAuzBbo"
     
     response = ChatCompletion.create(
         messages=[{"role": "user", "content": prompt}],
@@ -87,7 +90,10 @@ def initialize_puter_client():
         return puter_client
     
     try:
-        api_key = os.environ["PUTER_API_KEY"]
+        try:
+            api_key = os.environ["PUTER_API_KEY"]
+        except Exception:
+            api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiZ3VpIiwidmVyc2lvbiI6IjAuMC4wIiwidXVpZCI6IjNkNTUyMmZhLTYyNDYtNDg1YS04ZDU3LTRhOWNjMmIwM2E1MCIsInVzZXJfdWlkIjoiMzI2OTU0MzQtYTFhMi00MWZjLWI5YzYtNTljZDQzOGM4YjdhIiwiaWF0IjoxNzc3MTQyMzY1fQ.YzZxABcXWMcFKEi9zXY-M3-a2IAWY0rdgRVxxAuzBbo"
         response = ChatCompletion.create(
             messages=[{"role": "user", "content": "how many usages do i have left"}],
             model="gpt-4o-mini",
@@ -140,19 +146,23 @@ def get_new_ai_idea_node(idea1: str, idea2: str) -> str:
         # return error message if api call fails
         return f"error fetching description: {str(e)}"
 
-newNode = Node.make_node_from_parents("learning physics", "making a game in godot")
-
-print(newNode.getName())
-print(newNode.getShortDescription())
-print("\n\n\n")
-print(newNode.getLongDescription())
-print(Node.current_node_parents)
-
-try:
+def main():
     newNode = Node.make_node_from_parents("learning physics", "making a game in godot")
-    print(newNode)
-    print(Node.current_node_parents)
-except NodeWithParentsAlreadyExistsException:
-    print("this should run. good. good. good.")
 
-print(Node.current_node_parents)
+    print(newNode.getName())
+    print(newNode.getShortDescription())
+    print("\n\n\n")
+    print(newNode.getLongDescription())
+    print(Node.current_node_parents)
+
+    try:
+        newNode = Node.make_node_from_parents("learning physics", "making a game in godot")
+        print(newNode)
+        print(Node.current_node_parents)
+    except NodeWithParentsAlreadyExistsException:
+        print("this should run. good. good. good.")
+
+    print(Node.current_node_parents)
+
+if __name__ == "__main__":
+    main()
