@@ -17,4 +17,3 @@ Infinite craft inspired topic masher (chosen !!)
 * ai comes up with the new topic (wow)
 
 ## setup:
-https://ai.google.dev/gemini-api/docs/quickstart
