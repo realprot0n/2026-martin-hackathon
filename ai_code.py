@@ -10,14 +10,15 @@ class NodeWithParentsAlreadyExistsException(Exception):
 class Node:
     current_node_parents: list[tuple[str, str]] = []
     
-    def __init__(self, name, sdescription = None, ldescription = None):
+    def __init__(self, name, sdescription = None, ldescription = None, is_user_created: bool = False):
         self.name = name
         
-        if sdescription is None:
+        if sdescription is None and is_user_created:
             sdescription = get_short_ai_description(name)
         self.shortDescription = sdescription
         
         self.longDescription = ldescription
+        self.is_user_created = is_user_created
     
     @staticmethod
     def make_node_from_parents(parent1: str | object , parent2: str | object):
@@ -42,10 +43,17 @@ class Node:
         return self.name
     
     def getShortDescription(self):
+        if self.is_user_created:
+            return "You created this node"
         return self.shortDescription
     
-    def getLongDescription(self):
-        return self.longDescription if (self.longDescription != None) else get_long_ai_description(self.name)
+    def getLongDescription(self) -> str | None:
+        if self.longDescription != None:
+            return self.longDescription
+        elif not self.is_user_created:
+            return get_long_ai_description(self.name)
+        
+        return None
     
 puter_client = None
 
