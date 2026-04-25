@@ -1,4 +1,4 @@
-import asyncio
+import os
 from puter import PuterAI
 
 puter_client = None
@@ -28,11 +28,14 @@ def initialize_puter_client():
         return puter_client
     
     try:
-        puter_client = PuterAI(username="hackathon_test", password="seguinhs2026")
+        username = os.environ["PUTER_USERNAME"]
+        password = os.environ["PUTER_PASSWORD"]
+        puter_client = PuterAI(username=username, password=password)
         if puter_client.login():
             return puter_client
         return None
-    except Exception:
+    except Exception as e:
+        print(e)
         return None
 
 def get_ai_call() -> str:
