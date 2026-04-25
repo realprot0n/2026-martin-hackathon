@@ -1,4 +1,6 @@
 import os
+import asyncio
+import socket
 from puter import PuterAI
 
 puter_client = None
