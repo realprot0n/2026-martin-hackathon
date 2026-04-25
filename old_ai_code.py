@@ -1,3 +1,4 @@
+import os
 import asyncio
 import socket
 from puter import PuterAI
@@ -49,11 +50,14 @@ def initialize_puter_client():
         return puter_client
     
     try:
-        puter_client = PuterAI(username="hackathon_test", password="seguinhs2026")
+        username = os.environ["PUTER_USERNAME"]
+        password = os.environ["PUTER_PASSWORD"]
+        puter_client = PuterAI(username=username, password=password)
         if puter_client.login():
             return puter_client
         return None
-    except Exception:
+    except Exception as e:
+        print(e)
         return None
 
 def get_new_node_name(idea1: str, idea2: str) -> str:
