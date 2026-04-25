@@ -18,5 +18,6 @@ Infinite craft inspired topic masher (chosen !!)
 
 ## setup:
 1. create account at https://puter.com
-2. set PUTER_USERNAME and PUTER_PASSWORD environment variables to your puter username and password (you likely have to restart VS code or whatever you're using)
-3. uhh it should work
+2. get username/password/api key from https://puter.com/dashboard#account
+3. set PUTER_USERNAME and PUTER_PASSWORD environment variables to your puter username and password (you likely have to restart VS code or whatever you're using)
+4. uhh it should work
