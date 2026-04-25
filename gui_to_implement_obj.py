@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QGraphicsView,
                              QGraphicsScene, QGraphicsTextItem, QLineEdit,
                              QVBoxLayout, QWidget, QFrame)
 from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QPainter, QBrush, QColor, QPen
+from PySide6.QtGui import QPainter, QBrush, QColor, QPen, QGuiApplication
 
 import ai_code
 
@@ -27,7 +27,12 @@ class DraggableTextNode(QGraphicsTextItem):
     def paint(self, painter, option, widget):
         rect = self.boundingRect()
         
-        bg_color = QColor("#ffcccc") if self.is_over_trash else QColor("white")
+        color_scheme: Qt.ColorScheme = QGuiApplication.styleHints().colorScheme()
+
+        if color_scheme == Qt.ColorScheme.Dark:
+            bg_color = QColor("#4e0000") if self.is_over_trash else QColor("#333333")
+        else:
+            bg_color = QColor("#ffcccc") if self.is_over_trash else QColor("white")
         border_color = QColor("#ff4444") if self.is_over_trash else QColor("#bdc3c7")
         
         painter.setBrush(QBrush(bg_color))
@@ -99,7 +104,7 @@ class MainWindow(QMainWindow):
         self.text_entry = QLineEdit()
         self.text_entry.setPlaceholderText("type box")
         self.text_entry.setFixedWidth(300)
-        self.text_entry.setStyleSheet("padding: 10px; border-radius: 20px; border: 2px solid #eee; background: white;")
+        self.text_entry.setStyleSheet("padding: 10px; border-radius: 20px; border: 2px solid #eee;")
         self.text_entry.returnPressed.connect(self.add_node)
         self.entry_layout.addWidget(self.text_entry, alignment=Qt.AlignHCenter)
         self.layout.addWidget(self.entry_container)
