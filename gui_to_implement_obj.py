@@ -1,9 +1,9 @@
 import sys
 from PySide6.QtWidgets import (QApplication, QMainWindow, QGraphicsView,
                              QGraphicsScene, QGraphicsTextItem, QLineEdit,
-                             QVBoxLayout, QWidget, QFrame, QStackedWidget,
-                             QTextEdit, QPushButton, QLabel)
-from PySide6.QtCore import Qt, QRectF
+                             QVBoxLayout, QWidget, QFrame, QLabel, QHBoxLayout,
+                             QTextBrowser, QSizePolicy)
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QBrush, QColor, QPen, QGuiApplication
 
 import ai_code
@@ -64,6 +64,7 @@ class DraggableTextNode(QGraphicsTextItem):
             self.main_window.show_details(self.data)
 
         if self.main_window.check_collision_with_trash(self):
+            self.main_window.clear_details(self.data)
             self.scene().removeItem(self)
             return super().mouseReleaseEvent(event)
 
@@ -132,42 +133,97 @@ class InfiniteCanvas(QGraphicsView):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("test gui")
-        self.resize(1000, 800)
+        self.setWindowTitle("Node Explorer")
+        self.resize(1200, 800)
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
-        self.layout = QVBoxLayout(self.central_widget)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(0)
+        self.main_h_layout = QHBoxLayout(self.central_widget)
+        self.main_h_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_h_layout.setSpacing(0)
+
+        self.left_container = QWidget()
+        self.left_layout = QVBoxLayout(self.left_container)
+        self.left_layout.setContentsMargins(0, 0, 0, 0)
+        self.left_layout.setSpacing(0)
 
         self.entry_container = QFrame()
         self.entry_layout = QVBoxLayout(self.entry_container)
         self.text_entry = QLineEdit()
-        self.text_entry.setPlaceholderText("type box")
+        self.text_entry.setPlaceholderText("Type and press Enter...")
         self.text_entry.setFixedWidth(300)
-        self.text_entry.setStyleSheet("padding: 10px; border-radius: 20px; border: 2px solid #eee;")
+        self.text_entry.setStyleSheet("padding: 10px; border-radius: 20px; border: 2px solid #eee; margin: 10px;")
         self.text_entry.returnPressed.connect(self.add_node)
         self.entry_layout.addWidget(self.text_entry, alignment=Qt.AlignHCenter)
-        self.layout.addWidget(self.entry_container)
+        self.left_layout.addWidget(self.entry_container)
 
         self.scene = QGraphicsScene(-50000, -50000, 100000, 100000)
         self.view = InfiniteCanvas(self.scene)
-        self.layout.addWidget(self.view)
+        self.left_layout.addWidget(self.view)
+        
+        self.main_h_layout.addWidget(self.left_container, stretch=4)
+
+        self.details_panel = QFrame()
+        self.details_panel.setFixedWidth(300)
+        self.details_panel.setStyleSheet("background-color: #f8f9fa; border-left: 1px solid #bdc3c7;")
+        self.details_layout = QVBoxLayout(self.details_panel)
+
+        self.detail_title = QLabel("Select a Node")
+        self.detail_title.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
+        self.detail_title.setWordWrap(True)
+
+        self.detail_desc = QTextBrowser()
+        self.detail_desc.setFrameStyle(QFrame.NoFrame)
+        self.detail_desc.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.detail_desc.setStyleSheet("background: transparent; font-size: 14px; padding: 10px;")
+
+        self.details_layout.addWidget(self.detail_title)
+        self.details_layout.addWidget(self.detail_desc) 
+        
+        self.main_h_layout.addWidget(self.details_panel)
+
+        self.current_node_data = None
 
         self.trash_zone = QFrame(self)
         self.trash_zone.setFixedHeight(80)
         self.trash_zone.setStyleSheet("background-color: rgba(255, 100, 100, 50); border-top: 2px solid #ff4444;")
+        self.trash_zone.raise_()
+
+    def show_details(self, node_data):
+        self.current_node_data = node_data
+        self.detail_title.setText(node_data.name)
+        
+        if getattr(node_data, 'is_user_created', False):
+            description = "This is a user generated node."
+        else:
+            description = node_data.getLongDescription()
+        
+        self.detail_desc.setMarkdown(description)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.trash_zone.setGeometry(0, self.height() - 80, self.left_container.width(), 80)
+        self.trash_zone.raise_()
+
+    def clear_details(self, node_data=None):
+        if node_data is None or node_data == self.current_node_data:
+            self.detail_title.setText("Select a Node")
+            self.detail_desc.clear()
+            self.current_node_data = None
 
     def resizeEvent(self, event):
-        self.trash_zone.setGeometry(0, self.height() - 80, self.width(), 80)
         super().resizeEvent(event)
+        if hasattr(self, 'left_container'):
+            self.trash_zone.setGeometry(0, self.height() - 80, self.left_container.width(), 80)
+        self.trash_zone.raise_()
 
     def check_collision_with_trash(self, node):
         bottom_center = node.sceneBoundingRect().bottomLeft() + \
                         (node.sceneBoundingRect().bottomRight() - node.sceneBoundingRect().bottomLeft()) / 2
         
         view_point = self.view.mapFromScene(bottom_center)
+        if view_point.x() < 0 or view_point.x() > self.left_container.width():
+            return False
         return view_point.y() > (self.view.height() - 80)
 
     def add_node(self):
@@ -182,6 +238,9 @@ class MainWindow(QMainWindow):
     
     def merge_nodes(self, node1, node2):
         try:
+            self.clear_details(node1.data)
+            self.clear_details(node2.data)
+
             new_data_obj = ai_code.Node.make_node_from_parents(node1.data.name, node2.data.name)
             
             new_node = DraggableTextNode(new_data_obj, self)
@@ -191,12 +250,12 @@ class MainWindow(QMainWindow):
             self.scene.removeItem(node1)
             self.scene.removeItem(node2)
             
+            self.show_details(new_data_obj)
+            
         except ai_code.NodeWithParentsAlreadyExistsException:
             print("These have already been combined!")
         except Exception as e:
             print(f"Merge error: {e}")
-
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
