@@ -6,8 +6,6 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QGraphicsView,
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QBrush, QColor, QPen, QGuiApplication
 
-import PySide6
-
 import ai_code
 
 class DraggableTextNode(QGraphicsTextItem):
@@ -151,7 +149,7 @@ class HistoryNodeItem(QGraphicsTextItem):
     def mousePressEvent(self, event):
         self.main_window.show_details(self.node_data)
         super().mousePressEvent(event)
-        
+
 class OriginSenderButton(QPushButton):
     def __init__(self, text: str = "", parent: PySide6.QtWidgets.QWidget | None = None, autoDefault: bool = False, default: bool = False, flat: bool | None = False, infinite_canvas: InfiniteCanvas = None):
         super().__init__(
