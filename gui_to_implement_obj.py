@@ -40,15 +40,10 @@ class DraggableTextNode(QGraphicsTextItem):
 
     def paint(self, painter, option, widget):
         rect = self.boundingRect()
-        color_scheme = QGuiApplication.styleHints().colorScheme()
-
-        if color_scheme == Qt.ColorScheme.Dark:
-            bg_color = QColor("#4e0000") if self.is_over_trash else QColor("#333333")
-            self.setDefaultTextColor(Qt.white) # Set text to white for dark mode
-        else:
-            bg_color = QColor("#ffcccc") if self.is_over_trash else QColor("white")
-            self.setDefaultTextColor(Qt.black) # Set text to black for light mode
-            
+        
+        # Always use dark background with white text
+        bg_color = QColor("#4e0000") if self.is_over_trash else QColor("#333333")
+        self.setDefaultTextColor(Qt.white)
         border_color = QColor("#ff4444") if self.is_over_trash else QColor("#bdc3c7")
         
         painter.setBrush(QBrush(bg_color))
@@ -88,10 +83,8 @@ class DraggableTextNode(QGraphicsTextItem):
         super().mouseReleaseEvent(event)
     
     def update_display_text(self, show_description=False):
-        color_scheme = QGuiApplication.styleHints().colorScheme()
-        is_dark = (color_scheme == Qt.ColorScheme.Dark)
-        name_color = "white" if is_dark else "black"
-        desc_color = "#aaaaaa" if is_dark else "#555555"
+        name_color = "white"
+        desc_color = "#cccccc"
         
         html = f"<div style='text-align: center; width: 100%;'>"
         html += f"<b style='color: {name_color}; font-size: 13px;'>{self.data.name}</b>"
@@ -119,7 +112,8 @@ class InfiniteCanvas(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setBackgroundBrush(QColor("#fcfcfc"))
+        color_scheme = QGuiApplication.styleHints().colorScheme()
+        self.setBackgroundBrush(QColor("#2a2a2a") if color_scheme == Qt.ColorScheme.Dark else QColor("#fcfcfc"))
 
     def wheelEvent(self, event):
         zoom_in_factor = 1.15
@@ -152,13 +146,9 @@ class HistoryNodeItem(QGraphicsTextItem):
         self.setFont(font)
 
     def paint(self, painter, option, widget):
-        color_scheme = QGuiApplication.styleHints().colorScheme()
-        if color_scheme == Qt.ColorScheme.Dark:
-            bg_color = QColor("#333333")
-            self.setDefaultTextColor(Qt.white)
-        else:
-            bg_color = QColor("#ffffff")
-            self.setDefaultTextColor(Qt.black)
+        # Always use dark background with white text
+        bg_color = QColor("#333333")
+        self.setDefaultTextColor(Qt.white)
         
         painter.setBrush(bg_color)
         painter.setPen(QPen(QColor("#bdc3c7"), 1))
@@ -179,6 +169,9 @@ class OriginSenderButton(QPushButton):
             flat=flat
         )
         self.infinite_canvas: InfiniteCanvas = infinite_canvas
+        color_scheme = QGuiApplication.styleHints().colorScheme()
+        if color_scheme == Qt.ColorScheme.Dark:
+            self.setStyleSheet("color: white;")
         self.clicked.connect(self.send_user_to_origin)
 
     def send_user_to_origin(self) -> None:
@@ -206,7 +199,13 @@ class MainWindow(QMainWindow):
         self.text_entry = QLineEdit()
         self.text_entry.setPlaceholderText("Type and press Enter...")
         self.text_entry.setFixedWidth(300)
-        self.text_entry.setStyleSheet("padding: 10px; border-radius: 20px; border: 2px solid #eee; margin: 10px;")
+        color_scheme = QGuiApplication.styleHints().colorScheme()
+        if color_scheme == Qt.ColorScheme.Dark:
+            self.left_container.setStyleSheet("background-color: #181818;")
+            self.entry_container.setStyleSheet("background-color: #181818;")
+            self.text_entry.setStyleSheet("padding: 10px; border-radius: 20px; border: 2px solid #444444; margin: 10px; background-color: #2a2a2a; color: white;")
+        else:
+            self.text_entry.setStyleSheet("padding: 10px; border-radius: 20px; border: 2px solid #eee; margin: 10px;")
         self.text_entry.returnPressed.connect(self.add_node)
         self.entry_layout.addWidget(self.text_entry, alignment=Qt.AlignHCenter)
         self.left_layout.addWidget(self.entry_container)
@@ -303,9 +302,18 @@ class MainWindow(QMainWindow):
     
     def _cleanup_description_thread(self):
         """Clean up any running description thread."""
-        if self.thread and self.thread.isRunning():
-            self.thread.quit()
-            self.thread.wait()
+        if self.thread is not None:
+            try:
+                if self.thread.isRunning():
+                    self.thread.quit()
+                    self.thread.wait()
+            except RuntimeError:
+                # The underlying C++ thread object may already have been deleted.
+                pass
+        self.thread = None
+        self.worker = None
+
+    def _on_description_thread_finished(self):
         self.thread = None
         self.worker = None
     
@@ -313,10 +321,14 @@ class MainWindow(QMainWindow):
         if not node_data:
             return
         
-        # Clean up any existing thread
-        self._cleanup_description_thread()
-            
-        self.current_node_data = node_data
+        if self.current_node_data == node_data and self.thread is not None and self.thread.isRunning():
+            return
+        
+        # Clean up any existing thread when switching nodes
+        if self.current_node_data is not node_data:
+            self._cleanup_description_thread()
+            self.current_node_data = node_data
+        
         self.detail_title.setText(node_data.name)
         
         try:
@@ -324,9 +336,10 @@ class MainWindow(QMainWindow):
                 description = "This is a user generated node."
                 self.detail_desc.setMarkdown(description)
             elif node_data.longDescription:
+                # Use cached description - never regenerate
                 self.detail_desc.setMarkdown(node_data.longDescription)
             else:
-                # Start thread to fetch description
+                # Start thread to fetch description only once
                 self.detail_desc.setMarkdown("Loading description...")
                 self.worker = DescriptionWorker(node_data.name)
                 self.thread = QThread()
@@ -335,6 +348,7 @@ class MainWindow(QMainWindow):
                 self.worker.finished.connect(self.on_description_fetched)
                 self.worker.finished.connect(self.thread.quit)
                 self.worker.finished.connect(self.worker.deleteLater)
+                self.thread.finished.connect(self._on_description_thread_finished)
                 self.thread.finished.connect(self.thread.deleteLater)
                 self.thread.start()
         except Exception as e:
