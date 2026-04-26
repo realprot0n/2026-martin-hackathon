@@ -2,9 +2,11 @@ import sys
 from PySide6.QtWidgets import (QApplication, QMainWindow, QGraphicsView,
                              QGraphicsScene, QGraphicsTextItem, QLineEdit,
                              QVBoxLayout, QWidget, QFrame, QLabel, QHBoxLayout,
-                             QTextBrowser, QSizePolicy)
+                             QTextBrowser, QSizePolicy, QPushButton)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QBrush, QColor, QPen, QGuiApplication
+
+import PySide6
 
 import ai_code
 
@@ -130,13 +132,28 @@ class InfiniteCanvas(QGraphicsView):
         for y in range(top, int(rect.bottom()), grid_size):
             painter.drawLine(int(rect.left()), y, int(rect.right()), y)
 
+class OriginSenderButton(QPushButton):
+    def __init__(self, text: str = "", parent: PySide6.QtWidgets.QWidget | None = None, autoDefault: bool = False, default: bool = False, flat: bool | None = False, infinite_canvas: InfiniteCanvas = None):
+        super().__init__(
+            text, 
+            parent, 
+            autoDefault=autoDefault, 
+            default=default, 
+            flat=flat
+        )
+        self.infinite_canvas: InfiniteCanvas = infinite_canvas
+        self.clicked.connect(self.send_user_to_origin)
+
+    def send_user_to_origin(self) -> None:
+        self.infinite_canvas.centerOn(PySide6.QtCore.QPoint(0, 0))  
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Node Explorer")
         self.resize(1200, 800)
 
-        self.central_widget = QWidget()
+        self.central_widget: QWidget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_h_layout = QHBoxLayout(self.central_widget)
         self.main_h_layout.setContentsMargins(0, 0, 0, 0)
@@ -147,15 +164,16 @@ class MainWindow(QMainWindow):
         self.left_layout.setContentsMargins(0, 0, 0, 0)
         self.left_layout.setSpacing(0)
 
-        self.entry_container = QFrame()
-        self.entry_layout = QVBoxLayout(self.entry_container)
-        self.text_entry = QLineEdit()
+        self.entry_container: QFrame = QFrame()
+        self.entry_layout: QVBoxLayout = QVBoxLayout(self.entry_container)
+        self.text_entry: QLineEdit = QLineEdit()
         self.text_entry.setPlaceholderText("Type and press Enter...")
         self.text_entry.setFixedWidth(300)
         self.text_entry.setStyleSheet("padding: 10px; border-radius: 20px; border: 2px solid #eee; margin: 10px;")
         self.text_entry.returnPressed.connect(self.add_node)
         self.entry_layout.addWidget(self.text_entry, alignment=Qt.AlignHCenter)
         self.left_layout.addWidget(self.entry_container)
+        
 
         self.scene = QGraphicsScene(-50000, -50000, 100000, 100000)
         self.view = InfiniteCanvas(self.scene)
@@ -168,6 +186,9 @@ class MainWindow(QMainWindow):
         self.details_panel.setStyleSheet("background-color: #f8f9fa; border-left: 1px solid #bdc3c7;")
         self.details_layout = QVBoxLayout(self.details_panel)
 
+        self.origin_sender_button: OriginSenderButton = OriginSenderButton("Return to origin", infinite_canvas= self.view, parent=self.entry_container)
+        self.entry_layout.addWidget(self.origin_sender_button, alignment=Qt.AlignmentFlag.AlignJustify)
+        
         self.detail_title = QLabel("Select a Node")
         self.detail_title.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
         self.detail_title.setWordWrap(True)
