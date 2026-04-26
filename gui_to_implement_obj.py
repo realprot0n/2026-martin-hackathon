@@ -152,7 +152,15 @@ class HistoryNodeItem(QGraphicsTextItem):
         self.setFont(font)
 
     def paint(self, painter, option, widget):
-        painter.setBrush(QColor("#ffffff"))
+        color_scheme = QGuiApplication.styleHints().colorScheme()
+        if color_scheme == Qt.ColorScheme.Dark:
+            bg_color = QColor("#333333")
+            self.setDefaultTextColor(Qt.white)
+        else:
+            bg_color = QColor("#ffffff")
+            self.setDefaultTextColor(Qt.black)
+        
+        painter.setBrush(bg_color)
         painter.setPen(QPen(QColor("#bdc3c7"), 1))
         painter.drawRoundedRect(self.boundingRect(), 5, 5)
         super().paint(painter, option, widget)
@@ -234,7 +242,13 @@ class MainWindow(QMainWindow):
         self.detail_title.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
         self.detail_title.setWordWrap(True)
         self.detail_desc = QTextBrowser()
-        self.detail_desc.setStyleSheet("background: transparent; font-size: 14px; padding: 10px;")
+        
+        # Set stylesheet based on color scheme
+        color_scheme = QGuiApplication.styleHints().colorScheme()
+        if color_scheme == Qt.ColorScheme.Dark:
+            self.detail_desc.setStyleSheet("background-color: #2a2a2a; color: white; font-size: 14px; padding: 10px; border-radius: 5px;")
+        else:
+            self.detail_desc.setStyleSheet("background: transparent; font-size: 14px; padding: 10px;")
 
         self.details_layout.addWidget(self.detail_title)
         self.details_layout.addWidget(self.detail_desc)
