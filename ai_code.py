@@ -10,8 +10,9 @@ class NodeWithParentsAlreadyExistsException(Exception):
 class Node:
     current_node_parents: list[tuple[str, str]] = []
     
-    def __init__(self, name, sdescription = None, ldescription = None, is_user_created: bool = False):
+    def __init__(self, name, sdescription = None, ldescription = None, is_user_created: bool = False, parents = None):
         self.name = name
+        self.parents = parents or []
         
         if (sdescription is None) and (not is_user_created):
             sdescription = get_short_ai_description(name)
@@ -22,18 +23,17 @@ class Node:
     
     @staticmethod
     def make_node_from_parents(parent1: str | object , parent2: str | object):
-        if isinstance(parent1, Node):
-            parent1: str = parent1.getName()
-        if isinstance(parent2, Node):
-            parent2: str = parent2.getName()
+        name1 = parent1.getName()
+        name2 = parent2.getName()
         
-        if (parent1, parent2) in Node.current_node_parents or \
-            (parent2, parent1) in Node.current_node_parents:
-            raise NodeWithParentsAlreadyExistsException(f"{parent1} and {parent2}")
+        if (name1, name2) in Node.current_node_parents or \
+            (name2, name1) in Node.current_node_parents:
+            raise NodeWithParentsAlreadyExistsException(f"{name1} and {name2}")
         
-        Node.add_parents_to_list(parent1, parent2)
+        Node.add_parents_to_list(name1, name2)
 
-        return Node(get_new_node_name(parent1, parent2))
+        # ⬅️ Pass parent objects into the new Node
+        return Node(get_new_node_name(name1, name2), parents=[parent1, parent2])
     
     @staticmethod
     def add_parents_to_list(parent1: str, parent2: str) -> None:

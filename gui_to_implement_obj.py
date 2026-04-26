@@ -2,8 +2,8 @@ import sys
 from PySide6.QtWidgets import (QApplication, QMainWindow, QGraphicsView,
                              QGraphicsScene, QGraphicsTextItem, QLineEdit,
                              QVBoxLayout, QWidget, QFrame, QLabel, QHBoxLayout,
-                             QTextBrowser, QSizePolicy)
-from PySide6.QtCore import Qt
+                             QTextBrowser, QSizePolicy, QPushButton)
+from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPainter, QBrush, QColor, QPen, QGuiApplication
 
 import ai_code
@@ -130,6 +130,26 @@ class InfiniteCanvas(QGraphicsView):
         for y in range(top, int(rect.bottom()), grid_size):
             painter.drawLine(int(rect.left()), y, int(rect.right()), y)
 
+class HistoryNodeItem(QGraphicsTextItem):
+    def __init__(self, node_data, main_window):
+        super().__init__(node_data.name)
+        self.node_data = node_data
+        self.main_window = main_window
+        self.setTextWidth(150)
+        font = self.font()
+        font.setPointSize(10)
+        self.setFont(font)
+
+    def paint(self, painter, option, widget):
+        painter.setBrush(QColor("#ffffff"))
+        painter.setPen(QPen(QColor("#bdc3c7"), 1))
+        painter.drawRoundedRect(self.boundingRect(), 5, 5)
+        super().paint(painter, option, widget)
+
+    def mousePressEvent(self, event):
+        self.main_window.show_details(self.node_data)
+        super().mousePressEvent(event)
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -145,8 +165,7 @@ class MainWindow(QMainWindow):
         self.left_container = QWidget()
         self.left_layout = QVBoxLayout(self.left_container)
         self.left_layout.setContentsMargins(0, 0, 0, 0)
-        self.left_layout.setSpacing(0)
-
+        
         self.entry_container = QFrame()
         self.entry_layout = QVBoxLayout(self.entry_container)
         self.text_entry = QLineEdit()
@@ -158,9 +177,16 @@ class MainWindow(QMainWindow):
         self.left_layout.addWidget(self.entry_container)
 
         self.scene = QGraphicsScene(-50000, -50000, 100000, 100000)
-        self.view = InfiniteCanvas(self.scene)
-        self.left_layout.addWidget(self.view)
+        self.view = InfiniteCanvas(self.scene) # Your InfiniteCanvas class
         
+        self.history_scene = QGraphicsScene()
+        self.history_view = QGraphicsView(self.history_scene)
+        self.history_view.setRenderHint(QPainter.Antialiasing)
+        self.history_view.setDragMode(QGraphicsView.ScrollHandDrag)
+        self.history_view.hide()
+
+        self.left_layout.addWidget(self.view)
+        self.left_layout.addWidget(self.history_view)
         self.main_h_layout.addWidget(self.left_container, stretch=4)
 
         self.details_panel = QFrame()
@@ -168,18 +194,19 @@ class MainWindow(QMainWindow):
         self.details_panel.setStyleSheet("background-color: #f8f9fa; border-left: 1px solid #bdc3c7;")
         self.details_layout = QVBoxLayout(self.details_panel)
 
+        self.history_btn = QPushButton("View Node History")
+        self.history_btn.setStyleSheet("padding: 10px; font-weight: bold;")
+        self.history_btn.clicked.connect(self.toggle_history)
+        self.details_layout.addWidget(self.history_btn)
+
         self.detail_title = QLabel("Select a Node")
         self.detail_title.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
         self.detail_title.setWordWrap(True)
-
         self.detail_desc = QTextBrowser()
-        self.detail_desc.setFrameStyle(QFrame.NoFrame)
-        self.detail_desc.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.detail_desc.setStyleSheet("background: transparent; font-size: 14px; padding: 10px;")
 
         self.details_layout.addWidget(self.detail_title)
-        self.details_layout.addWidget(self.detail_desc) 
-        
+        self.details_layout.addWidget(self.detail_desc)
         self.main_h_layout.addWidget(self.details_panel)
 
         self.current_node_data = None
@@ -189,16 +216,54 @@ class MainWindow(QMainWindow):
         self.trash_zone.setStyleSheet("background-color: rgba(255, 100, 100, 50); border-top: 2px solid #ff4444;")
         self.trash_zone.raise_()
 
+    def toggle_history(self):
+        if self.view.isVisible():
+            if not self.current_node_data: return
+            self.view.hide()
+            self.entry_container.hide()
+            self.history_view.show()
+            self.history_btn.setText("View Canvas")
+            self.render_history_tree()
+        else:
+            self.history_view.hide()
+            self.view.show()
+            self.entry_container.show()
+            self.history_btn.setText("View Node History")
+
+    def render_history_tree(self):
+        self.history_scene.clear()
+        self._draw_history_recursive(self.current_node_data, 0, 0, 200)
+
+    def _draw_history_recursive(self, node, x, y, x_offset):
+        if not node: return
+        item = HistoryNodeItem(node, self)
+        self.history_scene.addItem(item)
+        item.setPos(x, y)
+
+        parents = getattr(node, 'parents', [])
+        for i, parent in enumerate(parents):
+            new_x = x - x_offset if i == 0 else x + x_offset
+            new_y = y + 100
+            self.history_scene.addLine(x + 75, y + 30, new_x + 75, new_y, QPen(QColor("#bdc3c7")))
+            self._draw_history_recursive(parent, new_x, new_y, x_offset / 1.5)
+
     def show_details(self, node_data):
+        if not node_data:
+            return
+            
         self.current_node_data = node_data
         self.detail_title.setText(node_data.name)
         
-        if getattr(node_data, 'is_user_created', False):
-            description = "This is a user generated node."
-        else:
-            description = node_data.getLongDescription()
+        try:
+            if getattr(node_data, 'is_user_created', False):
+                description = "This is a user generated node."
+            else:
+                description = node_data.getLongDescription()
+        except Exception as e:
+            description = f"Error loading description: {e}"
         
-        self.detail_desc.setMarkdown(description)
+        self.detail_desc.setMarkdown(description or "No description available.")
+
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -241,7 +306,7 @@ class MainWindow(QMainWindow):
             self.clear_details(node1.data)
             self.clear_details(node2.data)
 
-            new_data_obj = ai_code.Node.make_node_from_parents(node1.data.name, node2.data.name)
+            new_data_obj = ai_code.Node.make_node_from_parents(node1.data, node2.data)
             
             new_node = DraggableTextNode(new_data_obj, self)
             self.scene.addItem(new_node)
