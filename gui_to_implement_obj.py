@@ -3,10 +3,21 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QGraphicsView,
                              QGraphicsScene, QGraphicsTextItem, QLineEdit,
                              QVBoxLayout, QWidget, QFrame, QLabel, QHBoxLayout,
                              QTextBrowser, QSizePolicy, QPushButton)
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, QObject, Signal, QPoint
 from PySide6.QtGui import QPainter, QBrush, QColor, QPen, QGuiApplication
 
 import ai_code
+
+class DescriptionWorker(QObject):
+    finished = Signal(str)
+
+    def __init__(self, node_name):
+        super().__init__()
+        self.node_name = node_name
+
+    def run(self):
+        description = ai_code.get_long_ai_description(self.node_name)
+        self.finished.emit(description)
 
 class DraggableTextNode(QGraphicsTextItem):
     def __init__(self, Node, main_window):
@@ -151,7 +162,7 @@ class HistoryNodeItem(QGraphicsTextItem):
         super().mousePressEvent(event)
 
 class OriginSenderButton(QPushButton):
-    def __init__(self, text: str = "", parent: PySide6.QtWidgets.QWidget | None = None, autoDefault: bool = False, default: bool = False, flat: bool | None = False, infinite_canvas: InfiniteCanvas = None):
+    def __init__(self, text: str = "", parent: QWidget | None = None, autoDefault: bool = False, default: bool = False, flat: bool | None = False, infinite_canvas: InfiniteCanvas = None):
         super().__init__(
             text, 
             parent, 
@@ -163,7 +174,7 @@ class OriginSenderButton(QPushButton):
         self.clicked.connect(self.send_user_to_origin)
 
     def send_user_to_origin(self) -> None:
-        self.infinite_canvas.centerOn(PySide6.QtCore.QPoint(0, 0))  
+        self.infinite_canvas.centerOn(QPoint(0, 0))  
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -277,12 +288,30 @@ class MainWindow(QMainWindow):
         try:
             if getattr(node_data, 'is_user_created', False):
                 description = "This is a user generated node."
+                self.detail_desc.setMarkdown(description)
+            elif node_data.longDescription:
+                self.detail_desc.setMarkdown(node_data.longDescription)
             else:
-                description = node_data.getLongDescription()
+                # Start thread to fetch description
+                self.detail_desc.setMarkdown("Loading description...")
+                self.worker = DescriptionWorker(node_data.name)
+                self.thread = QThread()
+                self.worker.moveToThread(self.thread)
+                self.thread.started.connect(self.worker.run)
+                self.worker.finished.connect(self.on_description_fetched)
+                self.worker.finished.connect(self.thread.quit)
+                self.worker.finished.connect(self.worker.deleteLater)
+                self.thread.finished.connect(self.thread.deleteLater)
+                self.thread.start()
         except Exception as e:
             description = f"Error loading description: {e}"
-        
-        self.detail_desc.setMarkdown(description or "No description available.")
+            self.detail_desc.setMarkdown(description)
+
+
+    def on_description_fetched(self, description):
+        if self.current_node_data:
+            self.current_node_data.longDescription = description
+            self.detail_desc.setMarkdown(description or "No description available.")
 
 
     def showEvent(self, event):

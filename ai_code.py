@@ -33,7 +33,6 @@ class Node:
         
         Node.add_parents_to_list(name1, name2)
 
-        # ⬅️ Pass parent objects into the new Node
         return Node(get_new_node_name(name1, name2), parents=[parent1, parent2])
     
     @staticmethod
