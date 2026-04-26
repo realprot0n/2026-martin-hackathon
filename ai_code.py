@@ -14,12 +14,13 @@ class Node:
         self.name = name
         self.parents = parents or []
         
-        if (sdescription is None) and (not is_user_created):
+        if sdescription is None and is_user_created:
             sdescription = get_short_ai_description(name)
         self.shortDescription = sdescription
         
         self.longDescription = ldescription
         self.is_user_created = is_user_created
+
     
     @staticmethod
     def make_node_from_parents(parent1: str | object , parent2: str | object):
@@ -54,6 +55,7 @@ class Node:
             return get_long_ai_description(self.name)
         
         return None
+
     
 puter_client = None
 
@@ -76,8 +78,10 @@ def prompt_puter_ai(prompt: str, api_key: str = None) -> dict[str, bool | str | 
         try:
             api_key = os.environ["PUTER_API_KEY"]
         except Exception:
-            api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiZ3VpIiwidmVyc2lvbiI6IjAuMC4wIiwidXVpZCI6IjNkNTUyMmZhLTYyNDYtNDg1YS04ZDU3LTRhOWNjMmIwM2E1MCIsInVzZXJfdWlkIjoiMzI2OTU0MzQtYTFhMi00MWZjLWI5YzYtNTljZDQzOGM4YjdhIiwiaWF0IjoxNzc3MTQyMzY1fQ.YzZxABcXWMcFKEi9zXY-M3-a2IAWY0rdgRVxxAuzBbo"
-    
+            with open(".api_key", 'r') as f:
+                for line in f:
+                    api_key = line.strip()
+                
     response = ChatCompletion.create(
         messages=[{"role": "user", "content": prompt}],
         model="gpt-4o-mini",
@@ -101,7 +105,9 @@ def initialize_puter_client():
         try:
             api_key = os.environ["PUTER_API_KEY"]
         except Exception:
-            api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiZ3VpIiwidmVyc2lvbiI6IjAuMC4wIiwidXVpZCI6IjNkNTUyMmZhLTYyNDYtNDg1YS04ZDU3LTRhOWNjMmIwM2E1MCIsInVzZXJfdWlkIjoiMzI2OTU0MzQtYTFhMi00MWZjLWI5YzYtNTljZDQzOGM4YjdhIiwiaWF0IjoxNzc3MTQyMzY1fQ.YzZxABcXWMcFKEi9zXY-M3-a2IAWY0rdgRVxxAuzBbo"
+            with open(".api_key", 'r') as f:
+                for line in f:
+                    api_key = line.strip()
         response = ChatCompletion.create(
             messages=[{"role": "user", "content": "how many usages do i have left"}],
             model="gpt-4o-mini",
