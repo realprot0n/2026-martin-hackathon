@@ -227,11 +227,9 @@ class MainWindow(QMainWindow):
 
         self.details_panel = QFrame()
         self.details_panel.setFixedWidth(300)
-        self.details_panel.setStyleSheet("background-color: #f8f9fa; border-left: 1px solid #bdc3c7;")
         self.details_layout = QVBoxLayout(self.details_panel)
 
         self.history_btn = QPushButton("View Node History")
-        self.history_btn.setStyleSheet("padding: 10px; font-weight: bold;")
         self.history_btn.clicked.connect(self.toggle_history)
         self.details_layout.addWidget(self.history_btn)
 
@@ -239,22 +237,20 @@ class MainWindow(QMainWindow):
         self.entry_layout.addWidget(self.origin_sender_button, alignment=Qt.AlignmentFlag.AlignJustify)
         
         self.detail_title = QLabel("Select a Node")
-        self.detail_title.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
         self.detail_title.setWordWrap(True)
         self.detail_desc = QTextBrowser()
-        
-        # Set stylesheet based on color scheme
-        color_scheme = QGuiApplication.styleHints().colorScheme()
-        if color_scheme == Qt.ColorScheme.Dark:
-            self.detail_desc.setStyleSheet("background-color: #2a2a2a; color: white; font-size: 14px; padding: 10px; border-radius: 5px;")
-        else:
-            self.detail_desc.setStyleSheet("background: transparent; font-size: 14px; padding: 10px;")
 
         self.details_layout.addWidget(self.detail_title)
         self.details_layout.addWidget(self.detail_desc)
         self.main_h_layout.addWidget(self.details_panel)
+        
+        # Set panel styling based on color scheme (after all widgets are created)
+        color_scheme = QGuiApplication.styleHints().colorScheme()
+        self._update_details_panel_style(color_scheme)
 
         self.current_node_data = None
+        self.thread = None
+        self.worker = None
 
         self.trash_zone = QFrame(self)
         self.trash_zone.setFixedHeight(80)
@@ -292,9 +288,33 @@ class MainWindow(QMainWindow):
             self.history_scene.addLine(x + 75, y + 30, new_x + 75, new_y, QPen(QColor("#bdc3c7")))
             self._draw_history_recursive(parent, new_x, new_y, x_offset / 1.5)
 
+    def _update_details_panel_style(self, color_scheme):
+        """Update the styling of the details panel based on color scheme."""
+        if color_scheme == Qt.ColorScheme.Dark:
+            self.details_panel.setStyleSheet("background-color: #1e1e1e; border-left: 1px solid #444444; color: white;")
+            self.detail_title.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px; color: white;")
+            self.detail_desc.setStyleSheet("background-color: #2a2a2a; color: white; font-size: 14px; padding: 10px; border-radius: 5px;")
+            self.history_btn.setStyleSheet("padding: 10px; font-weight: bold; background-color: #333333; color: white; border: 1px solid #555555;")
+        else:
+            self.details_panel.setStyleSheet("background-color: #f8f9fa; border-left: 1px solid #bdc3c7; color: black;")
+            self.detail_title.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px; color: black;")
+            self.detail_desc.setStyleSheet("background: transparent; font-size: 14px; padding: 10px;")
+            self.history_btn.setStyleSheet("padding: 10px; font-weight: bold;")
+    
+    def _cleanup_description_thread(self):
+        """Clean up any running description thread."""
+        if self.thread and self.thread.isRunning():
+            self.thread.quit()
+            self.thread.wait()
+        self.thread = None
+        self.worker = None
+    
     def show_details(self, node_data):
         if not node_data:
             return
+        
+        # Clean up any existing thread
+        self._cleanup_description_thread()
             
         self.current_node_data = node_data
         self.detail_title.setText(node_data.name)
@@ -335,6 +355,7 @@ class MainWindow(QMainWindow):
 
     def clear_details(self, node_data=None):
         if node_data is None or node_data == self.current_node_data:
+            self._cleanup_description_thread()
             self.detail_title.setText("Select a Node")
             self.detail_desc.clear()
             self.current_node_data = None
