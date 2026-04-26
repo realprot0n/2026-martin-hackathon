@@ -403,6 +403,8 @@ class MainWindow(QMainWindow):
         self.trash_zone.setStyleSheet("background-color: rgba(255, 100, 100, 50); border-top: 2px solid #ff4444;")
         self.trash_zone.raise_() # Ensure it sits on top of other widgets
 
+        self.total_user_nodes_ever: int = 0
+
     def toggle_history(self):
         """
         Switches the UI state between the Infinite Canvas and the History Tree view.
@@ -611,8 +613,11 @@ class MainWindow(QMainWindow):
             self.scene.addItem(node)
             self.text_entry.clear()
             
+            self.total_user_nodes_ever += 1
             # Place node at the current center of the viewport
+            spacing = 50
             center = self.view.mapToScene(self.view.viewport().rect().center())
+            center.setY(center.y() + spacing*self.total_user_nodes_ever)
             node.setPos(center)
     
     def merge_nodes(self, node1, node2):
